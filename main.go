@@ -10,6 +10,8 @@ type User struct {
 }
 
 func main() {
+    db := InitDB()
+
     s := NewServer()
 
     s.HandleFunc("GET", "/", func(c *Context) {
@@ -22,21 +24,26 @@ func main() {
 
     s.HandleFunc("GET", "/users/:user_id", func(c *Context) {
         u := User{Id: c.Params["user_id"].(string)}
-        c.RenderXml(u)
+        c.RenderJson(u)
     })
 
     s.HandleFunc("GET", "/users/:user_id/address/:address_id", func(c *Context) {
-        u := User{c.Params["user_id"].(string), c.Params["address_id"].(string)}
+        u := User{Id: c.Params["user_id"].(string), AddressId: c.Params["address_id"].(string)}
         c.RenderJson(u)
     })
 
     s.HandleFunc("POST", "/users", func(c *Context) {
-        fmt.Fprintln(c.ResponseWriter, c.Params)
+        u := User{Id: c.Params["user_id"].(string)}
+        db.Create(&u)
+        c.RenderJson(u)
     })
 
     s.HandleFunc("POST", "/users/:user_id/address", func(c *Context) {
-        fmt.Fprintf(c.ResponseWriter, "create user %v's address\n",
-            c.Params["user_id"])
+        u := User{}
+        db.Where("Id = ?", c.Params["user_id"].(string)).First(&u)
+        u.AddressId = c.Params["address_id"].(string)
+        db.Save(&u)
+        c.RenderJson(u)
     })
 
     s.Run(":8080")
